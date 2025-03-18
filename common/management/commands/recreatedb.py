@@ -31,7 +31,7 @@ class Command(BaseCommand):
             os.remove(DB_FILE)
             self.stdout.write(self.style.SUCCESS(f"✅ Deleted {DB_FILE}"))
         else:
-            self.stdout.write(self.style.NOTICE(f"⚠️ {DB_FILE} not found, skipping."))
+            self.stdout.write(self.style.HTTP_INFO(f"⚠️ {DB_FILE} not found, skipping."))
 
 
     def clean_migrations(self) -> None:
@@ -57,14 +57,14 @@ class Command(BaseCommand):
 
 
     def handle(self, *args: str, **options: str) -> None:
-        self.stdout.write(self.style.NOTICE("🗑️ Removing pycache directories..."))
+        self.stdout.write(self.style.HTTP_INFO("🗑️ Removing pycache directories..."))
         self.remove_pycache_dirs()
         
-        self.stdout.write(self.style.NOTICE("🚀 Resetting database and migrations..."))
+        self.stdout.write(self.style.HTTP_INFO("🚀 Resetting database and migrations..."))
         self.delete_database()
         self.clean_migrations()
 
-        self.stdout.write(self.style.NOTICE("🔄 Running Django migrations..."))
+        self.stdout.write(self.style.HTTP_INFO("🔄 Running Django migrations..."))
         try:
             run_manage_py("makemigrations")
             run_manage_py("migrate")
@@ -74,5 +74,5 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR("❌ Error running Django commands:"))
             raise CommandError(f"{str(e)}")
 
-        self.stdout.write(self.style.NOTICE("🗑️ Removing pycache directories again..."))
+        self.stdout.write(self.style.HTTP_INFO("🗑️ Removing pycache directories again..."))
         self.remove_pycache_dirs()
