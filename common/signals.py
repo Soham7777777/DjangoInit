@@ -1,32 +1,49 @@
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any, cast
 from django.db import models
 from django.db.models.fields.files import FieldFile
-from enum import StrEnum, auto
 from common.models import AbstractBaseModel
 from django.core.exceptions import ObjectDoesNotExist
 
 
-class SignalEffect(StrEnum):
-    AUTO_DELETE_FILE = auto()
-    AUTO_DELETE_OLD_FILE = auto()
+@dataclass
+class AbstractModelSignalHandler[T: AbstractBaseModel](ABC):
+
+    @abstractmethod
+    def __call__(self, sender: type[T], **kwargs: Any) -> None: ...
 
 
-def delete_file_post_delete_function(sender: type[AbstractBaseModel], **kwargs: Any) -> None: 
-    instance = cast(AbstractBaseModel, kwargs['instance'])
-    for file_field in instance._meta.get_fields():
-        if isinstance(file_field, models.FileField) and SignalEffect.AUTO_DELETE_FILE in file_field.verbose_name:
-            file = cast(FieldFile, getattr(instance, file_field.get_attname()))
-            file.delete(save=False)
-        
+@dataclass
+class DeleteAssociatedFilesOnModelDelete[T: AbstractBaseModel](AbstractModelSignalHandler[T]):
 
-def delete_old_file_pre_save_function(sender: type[AbstractBaseModel], **kwargs: Any) -> None:
-    instance = cast(AbstractBaseModel, kwargs['instance'])
-    for file_field in instance._meta.get_fields():
-        if isinstance(file_field, models.FileField) and SignalEffect.AUTO_DELETE_OLD_FILE in file_field.verbose_name:
-            current_file = cast(FieldFile, getattr(instance, file_field.get_attname()))
-            try:
-                old_file = cast(FieldFile, getattr(sender.objects.get(pk=instance.pk), file_field.get_attname()))
-            except ObjectDoesNotExist:
-                return
-            if current_file.name != old_file.name:
-                old_file.delete(save=False)
+    target_file_fields: tuple[str, ...]
+
+
+    def __call__(self, sender: type[T], **kwargs: Any) -> None:
+        instance = cast(T, kwargs['instance'])
+
+        for field in instance._meta.get_fields():
+            if isinstance(field, models.FileField) and ((file_field_name:=field.get_attname()) in self.target_file_fields):
+                file = cast(FieldFile, getattr(instance, file_field_name))
+                file.delete(save=False)
+
+
+@dataclass
+class DeleteAssociatedOldFilesOnModelUpdate[T: AbstractBaseModel](AbstractModelSignalHandler[T]):
+
+    target_file_fields: tuple[str, ...]
+
+
+    def __call__(self, sender: type[T], **kwargs: Any) -> None:
+        instance = cast(T, kwargs['instance'])
+
+        for field in instance._meta.get_fields():
+            if isinstance(field, models.FileField) and ((file_field_name:=field.get_attname()) in self.target_file_fields):
+                current_file = cast(FieldFile, getattr(instance, file_field_name))
+                try:
+                    old_file = cast(FieldFile, getattr(sender.objects.get(pk=instance.pk), file_field_name))
+                except ObjectDoesNotExist:
+                    return
+                if current_file.name != old_file.name:
+                    old_file.delete(save=False)
