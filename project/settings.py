@@ -4,6 +4,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+import django
 from dotenv import load_dotenv
 
 
@@ -51,6 +52,7 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
             BASE_DIR / 'templates',
+            django.__path__[0] + "/forms/templates",
         ],
         'OPTIONS': {
             'context_processors': [
@@ -61,6 +63,8 @@ TEMPLATES = [
         },
     },
 ]
+
+FORM_RENDERER = 'django.forms.renderers.TemplatesSetting'
 
 WSGI_APPLICATION = 'project.wsgi.application'
 
